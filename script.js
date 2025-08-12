@@ -40,6 +40,7 @@ Grid sizes supported: even sizes 4,6,8
   let prng = mulberry32(hashStringToSeed('default'));
   let puzzle = null; // { size, givens: number[][], constraintsH: int[][], constraintsV: int[][], solution: number[][] }
   let playerGrid = null; // number[][]
+  let errorSince = null; // number | null timestamps per cell
 
   // Constraints encoding: 0 = none, 1 = equals, 2 = differ
   const CONSTRAINT_NONE = 0;
@@ -575,6 +576,7 @@ Grid sizes supported: even sizes 4,6,8
     timerInterval = setInterval(() => {
       const elapsed = Math.floor((performance.now() - startTimestampMs + elapsedMsBeforePause) / 1000);
       timerEl.textContent = formatSeconds(elapsed);
+      if (puzzle) validateBoardVisual();
     }, 200);
   }
 
@@ -598,7 +600,10 @@ Grid sizes supported: even sizes 4,6,8
         const idx = r * n + c;
         const el = cells[idx];
         const v = playerGrid[r][c];
+        if (!errorSince) errorSince = createMatrix(n, null);
         if (v === EMPTY) {
+          el.classList.remove('error');
+          errorSince[r][c] = null;
           continue;
         }
         const bad =
@@ -606,10 +611,16 @@ Grid sizes supported: even sizes 4,6,8
           violatesBalanceRule(playerGrid, r, c) ||
           violatesConstraint(playerGrid, r, c, puzzle.constraintsH, puzzle.constraintsV);
         if (bad) {
-          el.classList.add('error');
-          el.classList.remove('ok');
+          if (errorSince[r][c] == null) errorSince[r][c] = performance.now();
+          const elapsed = performance.now() - errorSince[r][c];
+          if (elapsed >= 750) {
+            el.classList.add('error');
+          } else {
+            el.classList.remove('error');
+          }
         } else {
           el.classList.remove('error');
+          errorSince[r][c] = null;
         }
       }
     }
@@ -628,6 +639,7 @@ Grid sizes supported: even sizes 4,6,8
   restartBtn.addEventListener('click', () => {
     if (!puzzle) return;
     playerGrid = cloneMatrix(puzzle.givens);
+    errorSince = createMatrix(puzzle.size, null);
     updateCells();
     resetTimer();
     statusTextEl.textContent = '';
@@ -690,6 +702,7 @@ Grid sizes supported: even sizes 4,6,8
     setTimeout(() => {
       puzzle = generatePuzzle(gridSize);
       playerGrid = cloneMatrix(puzzle.givens);
+      errorSince = createMatrix(puzzle.size, null);
       renderGrid(puzzle);
       updateCells();
       resetTimer();
