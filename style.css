@@ -1,16 +1,16 @@
+:root[data-bs-theme='dark'],
 :root {
   --grid-gap: 2px;
-  --cell-bg: #ffffff;
-  --cell-border: #cbd5e1;
-  --cell-hover: #f3f4f6;
-  --cell-active: #e0f2fe;
-  --error: #fee2e2;
-  --ok: #dcfce7;
+  --cell-bg: var(--bs-body-bg);
+  --cell-border: #475569;
+  --cell-hover: rgba(255,255,255,0.04);
+  --cell-active: rgba(59,130,246,0.15);
+  --error: rgba(239,68,68,0.25);
+  --ok: rgba(34,197,94,0.25);
 }
 
 body {
   font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-  background: #f8fafc;
 }
 
 .tango-grid {
@@ -18,7 +18,7 @@ body {
   inset: 0;
   display: grid;
   gap: var(--grid-gap);
-  padding: 8px;
+  padding: 6px;
 }
 
 .tango-cell {
@@ -31,7 +31,7 @@ body {
   cursor: pointer;
   border-radius: 6px;
   transition: background-color 120ms ease, transform 60ms ease;
-  font-size: clamp(16px, 4.5vmin, 32px);
+  font-size: clamp(14px, 4vmin, 28px);
 }
 
 .tango-cell:hover { background: var(--cell-hover); }
