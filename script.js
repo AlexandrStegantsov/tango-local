@@ -27,7 +27,6 @@ Grid sizes supported: even sizes 4,6,8
   const newGameBtn = document.getElementById('newGameBtn');
   const restartBtn = document.getElementById('restartBtn');
   const checkBtn = document.getElementById('checkBtn');
-  const hintBtn = document.getElementById('hintBtn');
   const shareBtn = document.getElementById('shareBtn');
 
   // Timer state
@@ -655,21 +654,6 @@ Grid sizes supported: even sizes 4,6,8
     }
   });
 
-  hintBtn.addEventListener('click', () => {
-    if (!puzzle) return;
-    // Fill a single incorrect or empty cell with the solution
-    for (let r = 0; r < puzzle.size; r++) {
-      for (let c = 0; c < puzzle.size; c++) {
-        if (puzzle.givens[r][c] !== EMPTY) continue;
-        if (playerGrid[r][c] !== puzzle.solution[r][c]) {
-          playerGrid[r][c] = puzzle.solution[r][c];
-          updateCells();
-          statusTextEl.textContent = 'Hint applied.';
-          return;
-        }
-      }
-    }
-  });
 
   shareBtn.addEventListener('click', async () => {
     const size = puzzle.size;
