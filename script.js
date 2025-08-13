@@ -37,7 +37,7 @@ Grid sizes supported: even sizes 4,6,8
   // Game state
   let gridSize = 6;
   let prng = mulberry32(hashStringToSeed('default'));
-  let puzzle = null; // { size, givens: number[][], constraintsH: int[][], constraintsV: int[][], solution: number[][] }
+  let puzzle = null; // { size, givens: number[][], constraintsH: int[][], constraintsV: int[][] }
   let playerGrid = null; // number[][]
   let errorSince = null; // number | null timestamps per cell
 
@@ -449,7 +449,7 @@ Grid sizes supported: even sizes 4,6,8
       }
     }
 
-    return { size: n, givens, constraintsH, constraintsV, solution };
+    return { size: n, givens, constraintsH, constraintsV };
   }
 
   // ---------- Rendering ----------
