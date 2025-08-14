@@ -28,6 +28,9 @@ Grid sizes supported: even sizes 4,6,8
   const restartBtn = document.getElementById('restartBtn');
   const checkBtn = document.getElementById('checkBtn');
   const shareBtn = document.getElementById('shareBtn');
+  const captchaModalEl = document.getElementById('captchaModal');
+  const holdBtn = document.getElementById('holdBtn');
+  const captchaHintEl = document.getElementById('captchaHint');
 
   // Timer state
   let timerInterval = null;
@@ -40,6 +43,9 @@ Grid sizes supported: even sizes 4,6,8
   let puzzle = null; // { size, givens: number[][], constraintsH: int[][], constraintsV: int[][] }
   let playerGrid = null; // number[][]
   let errorSince = null; // number | null timestamps per cell
+  let clicks = []; // recent click telemetry
+  let gridLocked = false; // locked during captcha
+  let captcha = null; // { requiredHoldMs, startTs, timer, bsModal }
 
   // Constraints encoding: 0 = none, 1 = equals, 2 = differ
   const CONSTRAINT_NONE = 0;
@@ -548,6 +554,7 @@ Grid sizes supported: even sizes 4,6,8
 
   // ---------- Interaction ----------
   function onCellClick(e) {
+    if (gridLocked) return;
     const el = e.currentTarget;
     const r = parseInt(el.dataset.r, 10);
     const c = parseInt(el.dataset.c, 10);
@@ -558,6 +565,8 @@ Grid sizes supported: even sizes 4,6,8
     const current = playerGrid[r][c];
     const next = current === EMPTY ? SUN : current === SUN ? MOON : EMPTY;
     playerGrid[r][c] = next;
+    recordClick(r, c, e);
+    maybeRequireCaptcha();
     updateCells();
 
     if (isSolved(playerGrid, puzzle.constraintsH, puzzle.constraintsV)) {
@@ -566,6 +575,120 @@ Grid sizes supported: even sizes 4,6,8
       shareBtn.classList.add('btn-warning');
     }
   }
+
+  // ---------- Anti-bot telemetry ----------
+  function recordClick(r, c, evt) {
+    const now = performance.now();
+    const rect = gridEl.getBoundingClientRect();
+    const n = puzzle.size;
+    const cellW = rect.width / n;
+    const cellH = rect.height / n;
+    const cellLeft = rect.left + c * cellW;
+    const cellTop = rect.top + r * cellH;
+    const clickX = evt.clientX;
+    const clickY = evt.clientY;
+    const dx = Math.abs(clickX - (cellLeft + cellW / 2));
+    const dy = Math.abs(clickY - (cellTop + cellH / 2));
+    clicks.push({ t: now, r, c, dx, dy });
+    // keep last 40
+    if (clicks.length > 40) clicks.shift();
+  }
+
+  function maybeRequireCaptcha() {
+    if (!clicks.length) return;
+    const now = performance.now();
+    // Analyze last 12 clicks in 8s
+    const windowMs = 8000 + Math.random() * 1500;
+    const recent = clicks.filter((k) => now - k.t <= windowMs);
+    if (recent.length < 12) return;
+    // Speed: median inter-click interval too low indicates automation
+    const sorted = recent.map((k) => k.t).sort((a, b) => a - b);
+    const intervals = [];
+    for (let i = 1; i < sorted.length; i++) intervals.push(sorted[i] - sorted[i - 1]);
+    intervals.sort((a, b) => a - b);
+    const medianInterval = intervals[Math.floor(intervals.length / 2)];
+    const speedThreshold = 90 + Math.random() * 90; // 90-180ms
+
+    // Precision: median dx/dy too low means too-perfect clicking
+    const median = (arr) => arr.sort((a, b) => a - b)[Math.floor(arr.length / 2)];
+    const dxMedian = median(recent.map((k) => k.dx));
+    const dyMedian = median(recent.map((k) => k.dy));
+    const precisionThreshold = 3 + Math.random() * 6; // 3-9px median
+
+    // Repetition: repeating same cells quickly
+    const repScore = recent.reduce((acc, k, i) => acc + (i > 0 && k.r === recent[i - 1].r && k.c === recent[i - 1].c ? 1 : 0), 0);
+
+    const suspicious =
+      medianInterval < speedThreshold &&
+      dxMedian < precisionThreshold &&
+      dyMedian < precisionThreshold &&
+      repScore > Math.max(2, Math.floor(recent.length * 0.2));
+
+    if (suspicious) triggerCaptcha();
+  }
+
+  function triggerCaptcha() {
+    if (gridLocked) return;
+    gridLocked = true;
+    const requiredHoldMs = 1200 + Math.floor(Math.random() * 800); // 1.2s - 2s
+    captcha = { requiredHoldMs, startTs: 0, timer: null, bsModal: null };
+    captchaHintEl.textContent = '';
+    if (window.bootstrap && bootstrap.Modal) {
+      const bsModal = new bootstrap.Modal(captchaModalEl, { backdrop: 'static', keyboard: false });
+      captcha.bsModal = bsModal;
+      bsModal.show();
+    } else {
+      // Fallback show modal without Bootstrap JS
+      captchaModalEl.classList.add('show');
+      captchaModalEl.style.display = 'block';
+      captchaModalEl.removeAttribute('aria-hidden');
+      captchaModalEl.setAttribute('aria-modal', 'true');
+      const backdrop = document.createElement('div');
+      backdrop.className = 'modal-backdrop fade show';
+      document.body.appendChild(backdrop);
+      captcha.bsModal = {
+        hide() {
+          captchaModalEl.classList.remove('show');
+          captchaModalEl.style.display = 'none';
+          captchaModalEl.setAttribute('aria-hidden', 'true');
+          captchaModalEl.removeAttribute('aria-modal');
+          backdrop.remove();
+        },
+      };
+    }
+  }
+
+  holdBtn.addEventListener('pointerdown', () => {
+    if (!captcha) return;
+    const progressEl = holdBtn.querySelector('.hold-progress');
+    captcha.startTs = performance.now();
+    progressEl.style.transform = 'scale(0.05)';
+    captcha.timer = setInterval(() => {
+      const elapsed = performance.now() - captcha.startTs;
+      const p = Math.min(1, elapsed / captcha.requiredHoldMs);
+      progressEl.style.transform = `scale(${p})`;
+      if (p >= 1) {
+        clearInterval(captcha.timer);
+        captcha.timer = null;
+        captcha.bsModal.hide();
+        gridLocked = false;
+        clicks = [];
+        captcha = null;
+        statusTextEl.textContent = 'Thanks! Verification complete.';
+      }
+    }, 50);
+  });
+
+  holdBtn.addEventListener('pointerup', () => {
+    if (!captcha) return;
+    if (captcha.timer) clearInterval(captcha.timer);
+    const elapsed = performance.now() - captcha.startTs;
+    const progressEl = holdBtn.querySelector('.hold-progress');
+    progressEl.style.transform = 'scale(0)';
+    captcha.timer = null;
+    captcha.startTs = 0;
+    captchaHintEl.textContent = elapsed > 0 ? 'Too short, please hold a bit longer.' : '';
+  });
 
   // ---------- Timer ----------
   function resetTimer() {
