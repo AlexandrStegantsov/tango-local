@@ -14,7 +14,7 @@ Grid sizes supported: even sizes 4,6,8
   const MOON = 0; // 🌙
   const EMPTY = -1;
 
-  let symbolMode = {{ sun: {{ char: '☀️', imgURL: null }}, moon: {{ char: '🌙', imgURL: null }} }};
+  let symbolMode = { sun: { char: '☀️', imgData: null }, moon: { char: '🌙', imgData: null } };
 
   // DOM elements
   const gridEl = document.getElementById('grid');
@@ -30,20 +30,40 @@ Grid sizes supported: even sizes 4,6,8
   const captchaModalEl = document.getElementById('captchaModal');
   const holdBtn = document.getElementById('holdBtn');
   const captchaHintEl = document.getElementById('captchaHint');
-  // Dropdowns for selecting symbol or hamster gif
-  const sunSelect = document.getElementById('sunSelect');
-  const moonSelect = document.getElementById('moonSelect');
+  // Emoji/text input fields for sun and moon
+  const sunEmojiInput = document.getElementById('sunEmoji');
+  const moonEmojiInput = document.getElementById('moonEmoji');
 
-  function applySymbolFromSelect(selectEl, target) {
-    const val = selectEl.value;
-    if (val === 'sun') { target.char = '☀️'; target.imgURL = null; }
-    else if (val === 'moon') { target.char = '🌙'; target.imgURL = null; }
-    else if (val === 'hamster') { target.char = ''; target.imgURL = 'https://media.tenor.com/2jQ6FJz6tHcAAAAi/sad-hamster.gif'; }
-    updateCells();
+  function handlePasteImage(inputEl, target) {
+    if (!inputEl) return;
+    inputEl.addEventListener('paste', (event) => {
+      const items = event.clipboardData.items;
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.indexOf('image') !== -1) {
+          const file = item.getAsFile();
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            target.imgData = e.target.result;
+            target.char = '';
+            updateCells();
+          };
+          reader.readAsDataURL(file);
+          event.preventDefault();
+          return;
+        }
+      }
+      // not image: just set char
+      setTimeout(() => {
+        target.char = inputEl.value;
+        target.imgData = null;
+        updateCells();
+      }, 0);
+    });
   }
 
-  if (sunSelect) sunSelect.addEventListener('change', () => applySymbolFromSelect(sunSelect, symbolMode.sun));
-  if (moonSelect) moonSelect.addEventListener('change', () => applySymbolFromSelect(moonSelect, symbolMode.moon));
+  handlePasteImage(sunEmojiInput, symbolMode.sun);
+  handlePasteImage(moonEmojiInput, symbolMode.moon);
 
 
   // Timer state
@@ -555,14 +575,14 @@ Grid sizes supported: even sizes 4,6,8
         const idx = r * n + c;
         const el = cells[idx];
         const v = playerGrid[r][c];
-        // Render based on symbolMode char or image URL
+        // Render based on symbolMode char or image
         el.textContent = '';
         const prevImg = el.querySelector('img.cell-img');
         if (prevImg) prevImg.remove();
         if (v === SUN) {
-          if (symbolMode.sun.imgURL) {
+          if (symbolMode.sun.imgData) {
             const img = document.createElement('img');
-            img.src = symbolMode.sun.imgURL;
+            img.src = symbolMode.sun.imgData;
             img.className = 'cell-img';
             img.style.width = '80%';
             img.style.height = '80%';
@@ -572,9 +592,9 @@ Grid sizes supported: even sizes 4,6,8
             el.textContent = symbolMode.sun.char;
           }
         } else if (v === MOON) {
-          if (symbolMode.moon.imgURL) {
+          if (symbolMode.moon.imgData) {
             const img = document.createElement('img');
-            img.src = symbolMode.moon.imgURL;
+            img.src = symbolMode.moon.imgData;
             img.className = 'cell-img';
             img.style.width = '80%';
             img.style.height = '80%';
