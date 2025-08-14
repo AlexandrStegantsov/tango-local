@@ -10,27 +10,46 @@ Grid sizes supported: even sizes 4,6,8
 */
 
 (function () {
-  const SUN = 1; // ☀️
-  const MOON = 0; // 🌙
-  const EMPTY = -1;
+const SUN = 1;
+const MOON = 0;
+const EMPTY = -1;
 
-  const sunChar = '☀️';
-  const moonChar = '🌙';
 
-  // DOM elements
-  const gridEl = document.getElementById('grid');
-  const timerEl = document.getElementById('timer');
-  const statusTextEl = document.getElementById('statusText');
-  const sizeSelectEl = document.getElementById('sizeSelect');
-  const seedInputEl = document.getElementById('seedInput');
-  const randomSeedBtn = document.getElementById('randomSeedBtn');
-  const newGameBtn = document.getElementById('newGameBtn');
-  const restartBtn = document.getElementById('restartBtn');
-  const checkBtn = document.getElementById('checkBtn');
-  const shareBtn = document.getElementById('shareBtn');
-  const captchaModalEl = document.getElementById('captchaModal');
-  const holdBtn = document.getElementById('holdBtn');
-  const captchaHintEl = document.getElementById('captchaHint');
+// Переменные для эмодзи (теперь их можно менять через UI)
+let sunChar = '☀️';
+let moonChar = '🌙';
+
+
+// DOM elements
+const gridEl = document.getElementById('grid');
+const timerEl = document.getElementById('timer');
+const statusTextEl = document.getElementById('statusText');
+const sizeSelectEl = document.getElementById('sizeSelect');
+const seedInputEl = document.getElementById('seedInput');
+const randomSeedBtn = document.getElementById('randomSeedBtn');
+const newGameBtn = document.getElementById('newGameBtn');
+const restartBtn = document.getElementById('restartBtn');
+const checkBtn = document.getElementById('checkBtn');
+const shareBtn = document.getElementById('shareBtn');
+const captchaModalEl = document.getElementById('captchaModal');
+const holdBtn = document.getElementById('holdBtn');
+const captchaHintEl = document.getElementById('captchaHint');
+
+
+// === Новые элементы для выбора эмодзи ===
+const sunEmojiInput = document.getElementById('sunEmoji');
+const moonEmojiInput = document.getElementById('moonEmoji');
+const applyEmojisBtn = document.getElementById('applyEmojis');
+
+
+if (applyEmojisBtn) {
+applyEmojisBtn.addEventListener('click', () => {
+sunChar = sunEmojiInput.value || '☀️';
+moonChar = moonEmojiInput.value || '🌙';
+updateCells();
+});
+}
+
 
   // Timer state
   let timerInterval = null;
@@ -533,26 +552,25 @@ Grid sizes supported: even sizes 4,6,8
     }
   }
 
-  function updateCells() {
-    const n = puzzle.size;
-    const cells = gridEl.children;
-    for (let r = 0; r < n; r++) {
-      for (let c = 0; c < n; c++) {
-        const idx = r * n + c;
-        const el = cells[idx];
-        const v = playerGrid[r][c];
-        el.textContent = v === SUN ? sunChar : v === MOON ? moonChar : '';
-        el.classList.remove('error', 'ok');
-        // Mark given cells subtlely: disable pointer? We'll allow changes for restart, but visually hint
-        if (puzzle.givens[r][c] !== EMPTY) {
-          el.style.fontWeight = '700';
-        } else {
-          el.style.fontWeight = '400';
-        }
-      }
-    }
-    validateBoardVisual();
-  }
+function updateCells() {
+const n = puzzle.size;
+const cells = gridEl.children;
+for (let r = 0; r < n; r++) {
+for (let c = 0; c < n; c++) {
+const idx = r * n + c;
+const el = cells[idx];
+const v = playerGrid[r][c];
+el.textContent = v === SUN ? sunChar : v === MOON ? moonChar : '';
+el.classList.remove('error', 'ok');
+if (puzzle.givens[r][c] !== EMPTY) {
+el.style.fontWeight = '700';
+} else {
+el.style.fontWeight = '400';
+}
+}
+}
+validateBoardVisual();
+}
 
   // ---------- Interaction ----------
   function onCellClick(e) {
@@ -841,7 +859,7 @@ Grid sizes supported: even sizes 4,6,8
   // ---------- Game bootstrap ----------
   function startNewGame() {
     gridSize = parseInt(sizeSelectEl.value, 10);
-    const seed = seedInputEl.value && seedInputEl.value.trim().length > 0 ? seedInputEl.value.trim() : `auto-${Date.now()}`;
+    const seed = seedInputEl.value && seedInputEl.value.trim().length > 0 ? seedInputEl.value.trim() : `auto-${Date.now()}`;	
     seedInputEl.value = seed;
     prng = mulberry32(hashStringToSeed(seed));
 
