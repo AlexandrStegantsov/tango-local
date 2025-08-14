@@ -924,4 +924,3 @@ Grid sizes supported: even sizes 4,6,8
   startNewGame();
 })();
 
-
