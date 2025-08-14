@@ -52,18 +52,23 @@
             </div>
           </div>
 
-          <!-- Блок выбора смайликов -->
+          <!-- Блок выбора символов -->
           <div class="row g-2 mt-3">
-            <div class="col-12 col-md-4">
-              <label for="sunEmoji" class="form-label">Солнце</label>
-              <input id="sunEmoji" type="text" class="form-control" value="☀️" maxlength="2">
+            <div class="col-12 col-md-6">
+              <label for="sunSelect" class="form-label">Символ для Солнца</label>
+              <select id="sunSelect" class="form-select">
+                <option value="sun" selected>☀️ Солнце</option>
+                <option value="moon">🌙 Луна</option>
+                <option value="hamster">🐹 Хомяк</option>
+              </select>
             </div>
-            <div class="col-12 col-md-4">
-              <label for="moonEmoji" class="form-label">Луна</label>
-              <input id="moonEmoji" type="text" class="form-control" value="🌙" maxlength="2">
-            </div>
-            <div class="col-12 col-md-4 d-grid">
-              <button class="btn btn-outline-secondary" id="applyEmojis" type="button">Применить</button>
+            <div class="col-12 col-md-6">
+              <label for="moonSelect" class="form-label">Символ для Луны</label>
+              <select id="moonSelect" class="form-select">
+                <option value="moon" selected>🌙 Луна</option>
+                <option value="sun">☀️ Солнце</option>
+                <option value="hamster">🐹 Хомяк</option>
+              </select>
             </div>
           </div>
         </div>
@@ -94,7 +99,7 @@
       </div>
 
       <div class="mt-4 text-center text-secondary small">
-        Built with Bootstrap. Symbols: ☀️ (Sun), 🌙 (Moon). Click a cell to cycle: empty → sun → moon.
+        Built with Bootstrap. Symbols: ☀️ (Sun), 🌙 (Moon), 🐹 (Hamster). Click a cell to cycle: empty → sun → moon.
       </div>
     </div>
 
@@ -121,6 +126,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
-    <script type="module" src="script.js"></script>
+    <script type="module" src="script.dropdown-hamster.js"></script>
   </body>
 </html>
