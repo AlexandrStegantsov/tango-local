@@ -19,7 +19,7 @@
     <div class="container py-4">
       <div class="d-flex align-items-center justify-content-between mb-3">
         <div>
-          <h1 class="h3 mb-1 fw-bold">Tango (Seeded)</h1>
+          <h1 class="h3 mb-1 fw-bold">Tango</h1>
           <div class="text-secondary small">A LinkedIn-style logic game with reproducible seeds</div>
         </div>
         <div class="text-end">
@@ -80,6 +80,28 @@
 
       <div class="mt-4 text-center text-secondary small">
         Built with Bootstrap. Symbols: ☀️ (Sun), 🌙 (Moon). Click a cell to cycle: empty → sun → moon.
+      </div>
+    </div>
+
+    <!-- Human Verification Modal -->
+    <div class="modal fade" id="captchaModal" tabindex="-1" aria-labelledby="captchaTitle" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="captchaTitle">Quick human check</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p class="mb-3">Press and hold the button until the ring completes to continue.</p>
+            <div class="d-flex justify-content-center">
+              <button id="holdBtn" class="btn btn-primary position-relative hold-btn" type="button">
+                Hold to verify
+                <span class="hold-progress"></span>
+              </button>
+            </div>
+            <div id="captchaHint" class="small text-secondary mt-3 text-center"></div>
+          </div>
+        </div>
       </div>
     </div>
 
