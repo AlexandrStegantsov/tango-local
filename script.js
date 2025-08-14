@@ -46,6 +46,8 @@ Grid sizes supported: even sizes 4,6,8
   let clicks = []; // recent click telemetry
   let gridLocked = false; // locked during captcha
   let captcha = null; // { requiredHoldMs, startTs, timer, bsModal }
+  let lastHumanClickMs = 0;
+  let pointerState = { isDown: false, downTs: 0, moves: 0, lastEventTrusted: false };
 
   // Constraints encoding: 0 = none, 1 = equals, 2 = differ
   const CONSTRAINT_NONE = 0;
@@ -555,12 +557,32 @@ Grid sizes supported: even sizes 4,6,8
   // ---------- Interaction ----------
   function onCellClick(e) {
     if (gridLocked) return;
+    // Ignore synthesized clicks
+    if (!e.isTrusted) return;
     const el = e.currentTarget;
     const r = parseInt(el.dataset.r, 10);
     const c = parseInt(el.dataset.c, 10);
     const given = puzzle.givens[r][c] !== EMPTY;
     // Allow overriding givens? Usually no. We'll lock givens.
     if (given) return;
+
+    // Require minimal pointer duration and at least one move to mimic natural interaction
+    const now = performance.now();
+    const minHold = 50 + Math.random() * 70; // 50-120ms
+    const minMove = 0; // allow 0 to not annoy users; can set to 1 if needed
+    if (!pointerState.isDown || !pointerState.lastEventTrusted || now - pointerState.downTs < minHold || pointerState.moves < minMove) {
+      // Count as suspicious; occasionally require captcha
+      if (Math.random() < 0.25) triggerCaptcha();
+      return;
+    }
+
+    // Rate-limit per-human clicks
+    const minDelta = 110 + Math.random() * 90; // 110-200ms
+    if (now - lastHumanClickMs < minDelta) {
+      if (Math.random() < 0.5) triggerCaptcha();
+      return;
+    }
+    lastHumanClickMs = now;
 
     const current = playerGrid[r][c];
     const next = current === EMPTY ? SUN : current === SUN ? MOON : EMPTY;
@@ -575,6 +597,23 @@ Grid sizes supported: even sizes 4,6,8
       shareBtn.classList.add('btn-warning');
     }
   }
+
+  // Pointer telemetry to detect synthetic input
+  gridEl.addEventListener('pointerdown', (e) => {
+    pointerState.isDown = true;
+    pointerState.downTs = performance.now();
+    pointerState.moves = 0;
+    pointerState.lastEventTrusted = !!e.isTrusted;
+  }, true);
+  gridEl.addEventListener('pointermove', (e) => {
+    if (!pointerState.isDown) return;
+    pointerState.moves += 1;
+    pointerState.lastEventTrusted = pointerState.lastEventTrusted && !!e.isTrusted;
+  }, true);
+  gridEl.addEventListener('pointerup', (e) => {
+    pointerState.isDown = false;
+    pointerState.lastEventTrusted = pointerState.lastEventTrusted && !!e.isTrusted;
+  }, true);
 
   // ---------- Anti-bot telemetry ----------
   function recordClick(r, c, evt) {
@@ -613,16 +652,14 @@ Grid sizes supported: even sizes 4,6,8
     const median = (arr) => arr.sort((a, b) => a - b)[Math.floor(arr.length / 2)];
     const dxMedian = median(recent.map((k) => k.dx));
     const dyMedian = median(recent.map((k) => k.dy));
-    const precisionThreshold = 3 + Math.random() * 6; // 3-9px median
+    const precisionThreshold = (3 + Math.random() * 6) * (window.devicePixelRatio || 1); // scale with DPR
 
     // Repetition: repeating same cells quickly
     const repScore = recent.reduce((acc, k, i) => acc + (i > 0 && k.r === recent[i - 1].r && k.c === recent[i - 1].c ? 1 : 0), 0);
 
     const suspicious =
-      medianInterval < speedThreshold &&
-      dxMedian < precisionThreshold &&
-      dyMedian < precisionThreshold &&
-      repScore > Math.max(2, Math.floor(recent.length * 0.2));
+      (medianInterval < speedThreshold && dxMedian < precisionThreshold && dyMedian < precisionThreshold) ||
+      repScore > Math.max(2, Math.floor(recent.length * 0.25));
 
     if (suspicious) triggerCaptcha();
   }
@@ -630,6 +667,7 @@ Grid sizes supported: even sizes 4,6,8
   function triggerCaptcha() {
     if (gridLocked) return;
     gridLocked = true;
+    statusTextEl.textContent = 'Verification required...';
     const requiredHoldMs = 1200 + Math.floor(Math.random() * 800); // 1.2s - 2s
     captcha = { requiredHoldMs, startTs: 0, timer: null, bsModal: null };
     captchaHintEl.textContent = '';
@@ -783,6 +821,7 @@ Grid sizes supported: even sizes 4,6,8
     const seed = seedInputEl.value || 'default';
     const text = `Tango (${size}x${size}) — seed: ${seed} — time: ${timerEl.textContent}`;
     try {
+      if (gridLocked) throw new Error('locked');
       await navigator.clipboard.writeText(text);
       statusTextEl.textContent = 'Copied share text to clipboard!';
     } catch {
