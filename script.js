@@ -566,22 +566,7 @@ Grid sizes supported: even sizes 4,6,8
     // Allow overriding givens? Usually no. We'll lock givens.
     if (given) return;
 
-    // Require minimal pointer duration and at least one move to mimic natural interaction
     const now = performance.now();
-    const minHold = 50 + Math.random() * 70; // 50-120ms
-    const minMove = 0; // allow 0 to not annoy users; can set to 1 if needed
-    if (!pointerState.isDown || !pointerState.lastEventTrusted || now - pointerState.downTs < minHold || pointerState.moves < minMove) {
-      // Count as suspicious; occasionally require captcha
-      if (Math.random() < 0.25) triggerCaptcha();
-      return;
-    }
-
-    // Rate-limit per-human clicks
-    const minDelta = 110 + Math.random() * 90; // 110-200ms
-    if (now - lastHumanClickMs < minDelta) {
-      if (Math.random() < 0.5) triggerCaptcha();
-      return;
-    }
     lastHumanClickMs = now;
 
     const current = playerGrid[r][c];
@@ -628,7 +613,10 @@ Grid sizes supported: even sizes 4,6,8
     const clickY = evt.clientY;
     const dx = Math.abs(clickX - (cellLeft + cellW / 2));
     const dy = Math.abs(clickY - (cellTop + cellH / 2));
-    clicks.push({ t: now, r, c, dx, dy });
+    const hold = Math.max(0, now - pointerState.downTs);
+    const moves = pointerState.moves;
+    const trusted = !!evt.isTrusted;
+    clicks.push({ t: now, r, c, dx, dy, hold, moves, trusted });
     // keep last 40
     if (clicks.length > 40) clicks.shift();
   }
@@ -639,7 +627,7 @@ Grid sizes supported: even sizes 4,6,8
     // Analyze last 12 clicks in 8s
     const windowMs = 8000 + Math.random() * 1500;
     const recent = clicks.filter((k) => now - k.t <= windowMs);
-    if (recent.length < 12) return;
+    if (recent.length < 12) return; // need enough signal to avoid false positives
     // Speed: median inter-click interval too low indicates automation
     const sorted = recent.map((k) => k.t).sort((a, b) => a - b);
     const intervals = [];
@@ -654,12 +642,25 @@ Grid sizes supported: even sizes 4,6,8
     const dyMedian = median(recent.map((k) => k.dy));
     const precisionThreshold = (3 + Math.random() * 6) * (window.devicePixelRatio || 1); // scale with DPR
 
+    // Hold duration: extremely short press patterns are bot-like
+    const holdMedian = median(recent.map((k) => k.hold));
+    const holdThreshold = 35 + Math.random() * 40; // 35-75ms
+
     // Repetition: repeating same cells quickly
     const repScore = recent.reduce((acc, k, i) => acc + (i > 0 && k.r === recent[i - 1].r && k.c === recent[i - 1].c ? 1 : 0), 0);
 
+    // Untrusted share (should be 100% trusted from genuine clicks)
+    const trustedRatio = recent.filter((k) => k.trusted).length / recent.length;
+
     const suspicious =
-      (medianInterval < speedThreshold && dxMedian < precisionThreshold && dyMedian < precisionThreshold) ||
-      repScore > Math.max(2, Math.floor(recent.length * 0.25));
+      (
+        medianInterval < speedThreshold &&
+        dxMedian < precisionThreshold &&
+        dyMedian < precisionThreshold &&
+        holdMedian < holdThreshold
+      ) ||
+      repScore > Math.max(3, Math.floor(recent.length * 0.3)) ||
+      trustedRatio < 0.85;
 
     if (suspicious) triggerCaptcha();
   }
